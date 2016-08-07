@@ -1,0 +1,14 @@
+// SettlersAI.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include "Board.h"
+#include "Pieces.h"
+
+int main()
+{
+	BoardState initialState = BoardState(2);
+
+    return 0;
+}
+
