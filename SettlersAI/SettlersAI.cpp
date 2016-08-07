@@ -7,7 +7,7 @@
 
 int main()
 {
-	BoardState initialState = BoardState(2);
+	BoardState initialState = BoardState(2, 4);
 	BoardState newState = initialState;
 
     return 0;

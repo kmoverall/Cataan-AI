@@ -8,6 +8,7 @@ enum class EdgeBuilding { None, Road };
 enum class Resource { None, Brick, Lumber, Ore, Grain, Wool };
 enum class Terrain { Desert, Hills, Forest, Mountains, Fields, Pasture };
 enum class Port { None, Brick, Lumber, Ore, Grain, Wool, Any };
+enum class DevelopmentCard { Knight, RoadBuilding, YearOfPlenty, Monopoly, VictoryPoint};
 
 struct HexCoord {
 	int p, q, r;

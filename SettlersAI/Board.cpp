@@ -3,13 +3,15 @@
 
 BoardState::BoardState() : 
 	m_radius(2),
+	m_numPlayers(4),
 	m_map(std::unordered_map<HexCoord, std::shared_ptr<Hex>>())
 {
 	GenerateNew();
 }
 
-BoardState::BoardState(const int radius) :
+BoardState::BoardState(const int radius, const int numPlayers) :
 	m_radius(radius),
+	m_numPlayers(numPlayers),
 	m_map(std::unordered_map<HexCoord, std::shared_ptr<Hex>>())
 {
 	GenerateNew();
@@ -20,11 +22,11 @@ BoardState::BoardState(const BoardState& other) :
 	m_robberLocation(other.m_robberLocation)
 {
 	//Create copy of the edge and corner list
-	for (auto& it : other.m_edge_list) {
-		m_edge_list.push_back( std::make_shared<Edge>(*it) );
+	for (auto& it : other.m_edgeList) {
+		m_edgeList.push_back( std::make_shared<Edge>(*it) );
 	}
-	for (auto& it : other.m_corner_list) {
-		m_corner_list.push_back( std::make_shared<Corner>(*it) );
+	for (auto& it : other.m_cornerList) {
+		m_cornerList.push_back( std::make_shared<Corner>(*it) );
 	}
 
 	//Create copies of all of the hexes
@@ -37,8 +39,8 @@ BoardState::BoardState(const BoardState& other) :
 	{
 		for (int i = 0; i < 6; i++) 
 		{
-			it.second->edges[i] = m_edge_list[it.second->edges[i]->index];
-			it.second->corners[i] = m_corner_list[it.second->corners[i]->index];
+			it.second->edges[i] = m_edgeList[it.second->edges[i]->index];
+			it.second->corners[i] = m_cornerList[it.second->corners[i]->index];
 		}
 	}
 }
@@ -67,8 +69,8 @@ void BoardState::GenerateNew()
 		{
 			if (it.second->edges[i] == nullptr)
 			{
-				m_edge_list.push_back( std::make_shared<Edge>(m_edge_list.size()) );
-				it.second->edges[i] = m_edge_list.back();
+				m_edgeList.push_back( std::make_shared<Edge>(m_edgeList.size()) );
+				it.second->edges[i] = m_edgeList.back();
 
 				//Add a reference to the edge to hex that shares that edge
 				if (GetHex(it.first + HexDirections::VECTORS[i]) != nullptr)
@@ -79,8 +81,8 @@ void BoardState::GenerateNew()
 
 			if (it.second->corners[i] == nullptr)
 			{
-				m_corner_list.push_back( std::make_shared<Corner>(m_corner_list.size()) );
-				it.second->corners[i] = m_corner_list.back();
+				m_cornerList.push_back( std::make_shared<Corner>(m_cornerList.size()) );
+				it.second->corners[i] = m_cornerList.back();
 
 				//Add a reference to the corner to hexes that share it
 				if (GetHex(it.first + HexDirections::VECTORS[i]) != nullptr)
@@ -167,6 +169,26 @@ void BoardState::GenerateNew()
 
 	//Position Robber
 	m_robberLocation = HexCoord(0, 0, 0);
+
+	//Fill development deck
+	for(int i = 0; i < 14; i ++)
+		m_developmentDeck.push_back(DevelopmentCard::Knight);
+	for (int i = 0; i < 2; i++)
+		m_developmentDeck.push_back(DevelopmentCard::Monopoly);
+	for (int i = 0; i < 2; i++)
+		m_developmentDeck.push_back(DevelopmentCard::RoadBuilding);
+	for (int i = 0; i < 2; i++)
+		m_developmentDeck.push_back(DevelopmentCard::YearOfPlenty);
+	for (int i = 0; i < 5; i++)
+		m_developmentDeck.push_back(DevelopmentCard::VictoryPoint);
+
+	//Set up players
+	for (int i = 0; i < m_numPlayers; i++)
+		m_players.push_back(PlayerState(i));
+
+	//Set starting amounts for resources
+	for(auto& it : m_remainingResources)
+		it = STARTING_RESOURCES;
 }
 
 std::shared_ptr<Hex> BoardState::GetHex(const HexCoord position) const
