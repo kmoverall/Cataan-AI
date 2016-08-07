@@ -100,20 +100,20 @@ struct Hex {
 	int value = 0;
 	Terrain terrain = Terrain::Desert;
 
-	Corner * corners[6];
-	Edge * edges[6];
+	std::shared_ptr<Corner> corners[6];
+	std::shared_ptr<Edge> edges[6];
 
 	Hex() {
 		for (int i = 0; i < 6; i++) {
-			corners[i] = NULL;
-			edges[i] = NULL;
+			corners[i] = nullptr;
+			edges[i] = nullptr;
 		}
 	}
 
 	Hex(int value_, Terrain terr_) : value(value_), terrain(terr_) {
 		for (int i = 0; i < 6; i++) {
-			corners[i] = NULL;
-			edges[i] = NULL;
+			corners[i] = nullptr;
+			edges[i] = nullptr;
 		}
 	}
 };
