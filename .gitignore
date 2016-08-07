@@ -1,4 +1,5 @@
-**/Debug/**
+Debug/**
+SettlersAI/Debug/**
 ipch/**
 .vs/**
 SettlersAI.sdf
