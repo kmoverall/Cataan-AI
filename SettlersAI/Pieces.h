@@ -103,9 +103,19 @@ struct Hex {
 	Corner * corners[6];
 	Edge * edges[6];
 
-	Hex() {}
+	Hex() {
+		for (int i = 0; i < 6; i++) {
+			corners[i] = NULL;
+			edges[i] = NULL;
+		}
+	}
 
-	Hex(int value_, Terrain terr_) : value(value_), terrain(terr_) {}
+	Hex(int value_, Terrain terr_) : value(value_), terrain(terr_) {
+		for (int i = 0; i < 6; i++) {
+			corners[i] = NULL;
+			edges[i] = NULL;
+		}
+	}
 };
 
 namespace HexDirections {
@@ -116,5 +126,7 @@ namespace HexDirections {
 	static const HexCoord SOUTHWEST = HexCoord(-1, 0, 1);
 	static const HexCoord NORTHWEST = HexCoord(-1, 1, 0);
 
-	static const HexCoord DIRECTIONS[6] = {NORTH, NORTHEAST, SOUTHEAST, SOUTH, SOUTHWEST, NORTHWEST};
+	static const HexCoord VECTORS[6] = {NORTH, NORTHEAST, SOUTHEAST, SOUTH, SOUTHWEST, NORTHWEST};
+
+	enum class Direction {North, Northeast, Southeast, South, Southwest, Northwest};
 }

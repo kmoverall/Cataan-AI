@@ -143,11 +143,13 @@
   <ItemGroup>
     <ClInclude Include="Board.h" />
     <ClInclude Include="Pieces.h" />
+    <ClInclude Include="PlayerAgent.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Board.cpp" />
+    <ClCompile Include="PlayerAgent.cpp" />
     <ClCompile Include="SettlersAI.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

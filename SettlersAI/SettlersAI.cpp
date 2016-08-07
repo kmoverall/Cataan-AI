@@ -8,6 +8,7 @@
 int main()
 {
 	BoardState initialState = BoardState(2);
+	BoardState newState = initialState;
 
     return 0;
 }

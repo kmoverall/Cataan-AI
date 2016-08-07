@@ -2,4 +2,5 @@ Debug/**
 SettlersAI/Debug/**
 ipch/**
 .vs/**
-SettlersAI.sdf
+*.sdf
+*.opendb

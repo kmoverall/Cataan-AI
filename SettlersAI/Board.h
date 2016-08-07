@@ -15,8 +15,8 @@ public:
 private:
 	int m_radius = 0;
 	std::unordered_map<HexCoord, Hex*> m_map;
-	std::vector<Edge> edge_list;
-	std::vector<Corner> corner_list;
+	std::vector<Edge*> m_edge_list;
+	std::vector<Corner*> m_corner_list;
 	HexCoord m_robberLocation;
 
 	void GenerateNew();
