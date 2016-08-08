@@ -13,15 +13,17 @@ public:
 	~BoardState();
 	std::shared_ptr<Hex> GetHex(const HexCoord position) const;
 
-	BoardState ProduceResources() const;
-	BoardState PlayerTrade(std::vector<Resource> offer1, int player1, std::vector<Resource> offer2, int player2) const;
-	BoardState BankTrade(std::vector<Resource> in, Resource out) const;
-	BoardState BuildRoad(Edge location, int player) const;
-	BoardState BuildSettlement(Corner location, int player) const;
-	BoardState BuildCity(Corner location, int player) const;
-	BoardState BuyDevelopment(int player) const;
-	BoardState MoveRobber(Hex location) const;
-	BoardState PlayDevelopmentCard(DevelopmentCard card) const;
+	int RollDice() const;
+	BoardState ProduceResources(const int roll) const;
+	BoardState PlayerTrade(const std::vector<Resource> offer1, const int player1, const std::vector<Resource> offer2, const int player2) const;
+	BoardState BankTrade(const std::vector<Resource> in, const Resource out, const int player) const;
+	BoardState BuildRoad(const std::shared_ptr<Edge> location, const int player) const;
+	BoardState BuildSettlement(const std::shared_ptr<Corner> location, const int player) const;
+	BoardState BuildCity(const std::shared_ptr<Corner> location, const int player) const;
+	BoardState BuyDevelopment(const int player) const;
+	BoardState MoveRobber(const HexCoord location) const;
+	BoardState Monopoly(const Resource resource, const int player) const;
+	BoardState YearOfPlenty(const Resource resource1, const Resource resource2, const int player) const;
 
 private:
 	static const int STARTING_RESOURCES = 19;

@@ -202,3 +202,167 @@ std::shared_ptr<Hex> BoardState::GetHex(const HexCoord position) const
 		return m_map.at(position);
 	}
 }
+
+int BoardState::RollDice() const
+{
+	return rand() % 6 + rand() % 6 + 2;
+}
+
+BoardState BoardState::ProduceResources(const int roll) const
+{
+	BoardState result = *this;
+
+	for (auto& it : m_map) {
+		//Number was rolled, robber is not there, and terrain is not desert
+		if (it.second->value == roll && it.first != m_robberLocation && it.second->terrain != Terrain::Desert) {
+			for (int i = 0; i < 6; i++) {
+				if (it.second->corners[i]->owner != -1) {
+					result.m_players[i].resources.push_back( (Resource)(it.second->terrain) );
+					if (it.second->corners[i]->building == CornerBuilding::City)
+						result.m_players[i].resources.push_back((Resource)(it.second->terrain));
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
+BoardState BoardState::PlayerTrade(const std::vector<Resource> offer1, const int player1, const std::vector<Resource> offer2, const int player2) const
+{
+	BoardState result = *this;
+
+	//Move player 1's offer from its hand to player 2's
+	for (auto& offer : offer1) {
+		for (int i = 0; i < result.m_players[player1].resources.size(); i++) {
+			if (result.m_players[player1].resources[i] == offer)
+				result.m_players[player1].resources.erase(result.m_players[player1].resources.begin() + i);
+		}
+		result.m_players[player2].resources.push_back(offer);
+	}
+
+	//Move player 2's offer from its hand to player 1's
+	for (auto& offer : offer2) {
+		for (int i = 0; i < result.m_players[player2].resources.size(); i++) {
+			if (result.m_players[player2].resources[i] == offer)
+				result.m_players[player2].resources.erase(result.m_players[player2].resources.begin() + i);
+		}
+		result.m_players[player1].resources.push_back(offer);
+	}
+
+	return result;
+}
+
+BoardState BoardState::BankTrade(const std::vector<Resource> in, const Resource out, const int player) const
+{
+	BoardState result = *this;
+
+	//Remove resources from Player 1's hand
+	for (auto& offer : in) {
+		for (int i = 0; i < result.m_players[player].resources.size(); i++) {
+			if (result.m_players[player].resources[i] == offer)
+				result.m_players[player].resources.erase(result.m_players[player].resources.begin() + i);
+		}
+	}
+
+	//Add resource traded for into player's hand
+	result.m_players[player].resources.push_back(out);
+
+	return result;
+}
+
+BoardState BoardState::BuildRoad(const std::shared_ptr<Edge> location, const int player) const
+{
+	BoardState result = *this;
+
+	result.m_edgeList[location->index]->building = EdgeBuilding::Road;
+	result.m_edgeList[location->index]->owner = player;
+	result.UpdateLongestRoad();
+
+	return result;
+}
+
+BoardState BoardState::BuildSettlement(const std::shared_ptr<Corner> location, const int player) const
+{
+	BoardState result = *this;
+
+	result.m_cornerList[location->index]->building = CornerBuilding::Settlement;
+	result.m_cornerList[location->index]->owner = player;
+
+	result.m_players[player].score++;
+
+	return result;
+}
+
+BoardState BoardState::BuildCity(const std::shared_ptr<Corner> location, const int player) const
+{
+	BoardState result = *this;
+
+	result.m_cornerList[location->index]->building = CornerBuilding::City;
+
+	result.m_players[player].score++;
+
+	return result;
+}
+
+BoardState BoardState::BuyDevelopment(const int player) const
+{
+	BoardState result = *this;
+
+	int cardIndex = rand() % result.m_developmentDeck.size();
+	DevelopmentCard card = result.m_developmentDeck[cardIndex];
+
+	//Add development card to player hand
+	result.m_players[player].development.push_back(card);
+	if (card == DevelopmentCard::Knight) {
+		result.m_players[player].armySize++;
+	}
+	else if (card == DevelopmentCard::VictoryPoint) {
+		result.m_players[player].score++;
+	}
+
+	//Remove from deck
+	result.m_developmentDeck.erase(result.m_developmentDeck.begin() + cardIndex);
+
+	return result;
+}
+
+BoardState BoardState::MoveRobber(const HexCoord location) const
+{
+	BoardState result = *this;
+
+	result.m_robberLocation = location;
+
+	return result;
+}
+
+BoardState BoardState::Monopoly(const Resource resource, const int player) const
+{
+	BoardState result = *this;
+
+	//Find all player's resources of a type, remove it from their hands, and add it the current player's hand
+	for (auto& plyr : result.m_players) {
+		if (plyr.index != player) {
+			for (int i = 0; i < plyr.resources.size(); i++) {
+				if (plyr.resources[i] == resource) {
+					plyr.resources.erase(plyr.resources.begin() + i);
+					result.m_players[player].resources.push_back(resource);
+					//Reset i to make sure that iteration still works properly after erase
+					i = 0;
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
+BoardState BoardState::YearOfPlenty(const Resource resource1, const Resource resource2, const int player) const
+{
+	BoardState result = *this;
+
+	result.m_players[player].resources.push_back(resource1);
+	result.m_players[player].resources.push_back(resource2);
+
+	return result;
+}
