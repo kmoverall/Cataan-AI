@@ -199,6 +199,8 @@ std::shared_ptr<Hex> BoardState::GetHex(const HexCoord position) const
 	}
 }
 
+PlayerState BoardState::GetPlayer(const int index) const { return m_players[index]; }
+
 BoardState BoardState::ProduceResources() const
 {
 	BoardState result = *this;
@@ -220,8 +222,12 @@ BoardState BoardState::ProduceResources() const
 			for (int i = 0; i < 6; i++) {
 				if (it.second->corners[i]->owner != -1) {
 					result.m_players[i].resources[(Resource)(it.second->terrain)]++;
-					if (it.second->corners[i]->building == CornerBuilding::City)
+					result.m_players[i].publicResources[(Resource)(it.second->terrain)]++;
+
+					if (it.second->corners[i]->building == CornerBuilding::City) {
 						result.m_players[i].resources[(Resource)(it.second->terrain)]++;
+						result.m_players[i].publicResources[(Resource)(it.second->terrain)]++;
+					}
 				}
 			}
 		}
@@ -230,36 +236,23 @@ BoardState BoardState::ProduceResources() const
 	return result;
 }
 
-BoardState BoardState::PlayerTrade(const std::map<Resource, int> ownOffer, const std::map<Resource, int> otherOffer, const int otherPlayer) const
+BoardState BoardState::MakeTrade(const Trade trade) const
 {
 	BoardState result = *this;
 
 	//Move player 1's offer from its hand to player 2's
-	for (auto& offer : ownOffer) {
+	for (auto& offer : trade.offer) {
 		result.m_players[m_playerTurn].resources[offer.first] -= offer.second;
-		result.m_players[otherPlayer].resources[offer.first] += offer.second;
+
+		if (trade.target != Trade::BANK) 
+			result.m_players[trade.target].resources[offer.first] += offer.second;
 	}
 
 	//Move player 2's offer from its hand to player 1's
-	for (auto& offer : otherOffer) {
-		result.m_players[otherPlayer].resources[offer.first] -= offer.second;
-		result.m_players[m_playerTurn].resources[offer.first] += offer.second;
-	}
-
-	return result;
-}
-
-BoardState BoardState::BankTrade(const std::map<Resource, int> toBank, const std::map<Resource, int> fromBank) const
-{
-	BoardState result = *this;
-
-	//Remove resources from player's hand
-	for (auto& offer : toBank) {
-		result.m_players[m_playerTurn].resources[offer.first] -= offer.second;
-	}
-
-	//Add resource traded for into player's hand
-	for (auto& offer : fromBank) {
+	for (auto& offer : trade.purchase) {
+		if (trade.target != Trade::BANK)
+			result.m_players[trade.target].resources[offer.first] -= offer.second;
+		
 		result.m_players[m_playerTurn].resources[offer.first] += offer.second;
 	}
 
@@ -491,7 +484,7 @@ BoardState BoardState::EndTurn() const
 	return result;
 }
 
-std::vector<std::function<void>> BoardState::GetAvailableActions()
+std::vector<std::function<BoardState>> BoardState::GetAvailableActions()
 {
 	std::vector<std::function<void>> validMoves = std::vector<std::function<void>>();
 
@@ -516,8 +509,7 @@ std::vector<std::function<void>> BoardState::GetAvailableActions()
 								validMoves.push_back(BuildRoad);
 							}
 							else {
-								validMoves.push_back(PlayerTrade);
-								validMoves.push_back(BankTrade);
+								validMoves.push_back(MakeTrade);
 								if (m_players[m_playerTurn].resources[Resource::Brick] > 0 && m_players[m_playerTurn].resources[Resource::Wool] > 0
 									&& m_players[m_playerTurn].resources[Resource::Lumber] > 0 && m_players[m_playerTurn].resources[Resource::Grain] > 0) {
 									validMoves.push_back(BuildSettlement);

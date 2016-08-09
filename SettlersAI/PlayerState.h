@@ -22,7 +22,9 @@ struct PlayerState
 	~PlayerState() {}
 
 	std::map<Resource, int> resources;
+	std::map<Resource, int> publicResources;
 	std::map<DevelopmentCard, int> development;
+	std::map<DevelopmentCard, int> playedCards;
 	int roadLength = 0;
 	int armySize = 0;
 	int score = 0;

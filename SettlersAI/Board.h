@@ -13,9 +13,10 @@ public:
 	~BoardState();
 	std::shared_ptr<Hex> GetHex(const HexCoord position) const;
 
+	PlayerState GetPlayer(const int index) const;
+
 	BoardState ProduceResources() const;
-	BoardState PlayerTrade(const std::map<Resource, int> ownOffer, const std::map<Resource, int> otherOffer, const int otherPlayer) const;
-	BoardState BankTrade(const std::map<Resource, int> toBank, const std::map<Resource, int> fromBank) const;
+	BoardState MakeTrade(const Trade trade) const;
 	BoardState BuildRoad(const std::shared_ptr<Edge> location) const;
 	BoardState BuildSettlement(const std::shared_ptr<Corner> location) const;
 	BoardState BuildCity(const std::shared_ptr<Corner> location) const;
@@ -30,7 +31,7 @@ public:
 	BoardState EndPhase() const;
 	BoardState EndTurn() const;
 
-	std::vector<std::function<void>> GetAvailableActions();
+	std::vector<std::function<BoardState>> GetAvailableActions();
 
 private:
 	static const int STARTING_RESOURCES = 19;
@@ -58,7 +59,7 @@ private:
 	void UpdateLargestArmy();
 	void CheckGameEnd();
 	std::vector<std::shared_ptr<Edge>> GetValidRoadEdges() const;
-	std::vector<std::shared_ptr<Corner>> GetValidSettlmentCorner() const;
-	bool HasValidBankTrade() const;
+	std::vector<std::shared_ptr<Corner>> GetValidSettlmentCorners() const;
+	std::vector<Trade> GetValidBankTrades() const;
 };
 

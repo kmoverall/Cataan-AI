@@ -122,6 +122,18 @@ struct Hex {
 	}
 };
 
+struct Trade {
+	static const int BANK = -1;
+	int target;
+	std::map<Resource, int> offer;
+	std::map<Resource, int> purchase;
+
+	Trade() {}
+	Trade(int t) : target(t) {}
+	Trade(int t, std::map<Resource, int> o, std::map<Resource, int> p) :
+		target(t), offer(o), purchase(p) {}
+};
+
 namespace HexDirections {
 	static const HexCoord NORTH = HexCoord(0, 1, -1);
 	static const HexCoord NORTHEAST = HexCoord(1, 0, -1);
