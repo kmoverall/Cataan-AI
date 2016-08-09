@@ -185,10 +185,6 @@ void BoardState::GenerateNew()
 	//Set up players
 	for (int i = 0; i < m_numPlayers; i++)
 		m_players.push_back(PlayerState(i));
-
-	//Set starting amounts for resources
-	for(auto& it : m_remainingResources)
-		it = STARTING_RESOURCES;
 }
 
 std::shared_ptr<Hex> BoardState::GetHex(const HexCoord position) const
@@ -203,23 +199,29 @@ std::shared_ptr<Hex> BoardState::GetHex(const HexCoord position) const
 	}
 }
 
-int BoardState::RollDice() const
-{
-	return rand() % 6 + rand() % 6 + 2;
-}
-
-BoardState BoardState::ProduceResources(const int roll) const
+BoardState BoardState::ProduceResources() const
 {
 	BoardState result = *this;
+
+	int roll = rand() % 6 + rand() % 6 + 2;
+
+	result.m_turnPhase = TurnPhase::EndProduce;
+
+	if (roll == 7) {
+		result.m_robberPhase = RobberPhase::Discard;
+		result.m_robberPlayer = result.m_playerTurn;
+		result.m_playerTurn = (result.m_playerTurn + 1) % m_numPlayers;
+		return result;
+	}
 
 	for (auto& it : m_map) {
 		//Number was rolled, robber is not there, and terrain is not desert
 		if (it.second->value == roll && it.first != m_robberLocation && it.second->terrain != Terrain::Desert) {
 			for (int i = 0; i < 6; i++) {
 				if (it.second->corners[i]->owner != -1) {
-					result.m_players[i].resources.push_back( (Resource)(it.second->terrain) );
+					result.m_players[i].resources[(Resource)(it.second->terrain)]++;
 					if (it.second->corners[i]->building == CornerBuilding::City)
-						result.m_players[i].resources.push_back((Resource)(it.second->terrain));
+						result.m_players[i].resources[(Resource)(it.second->terrain)]++;
 				}
 			}
 		}
@@ -228,101 +230,163 @@ BoardState BoardState::ProduceResources(const int roll) const
 	return result;
 }
 
-BoardState BoardState::PlayerTrade(const std::vector<Resource> offer1, const int player1, const std::vector<Resource> offer2, const int player2) const
+BoardState BoardState::PlayerTrade(const std::map<Resource, int> ownOffer, const std::map<Resource, int> otherOffer, const int otherPlayer) const
 {
 	BoardState result = *this;
 
 	//Move player 1's offer from its hand to player 2's
-	for (auto& offer : offer1) {
-		for (int i = 0; i < result.m_players[player1].resources.size(); i++) {
-			if (result.m_players[player1].resources[i] == offer)
-				result.m_players[player1].resources.erase(result.m_players[player1].resources.begin() + i);
-		}
-		result.m_players[player2].resources.push_back(offer);
+	for (auto& offer : ownOffer) {
+		result.m_players[m_playerTurn].resources[offer.first] -= offer.second;
+		result.m_players[otherPlayer].resources[offer.first] += offer.second;
 	}
 
 	//Move player 2's offer from its hand to player 1's
-	for (auto& offer : offer2) {
-		for (int i = 0; i < result.m_players[player2].resources.size(); i++) {
-			if (result.m_players[player2].resources[i] == offer)
-				result.m_players[player2].resources.erase(result.m_players[player2].resources.begin() + i);
-		}
-		result.m_players[player1].resources.push_back(offer);
+	for (auto& offer : otherOffer) {
+		result.m_players[otherPlayer].resources[offer.first] -= offer.second;
+		result.m_players[m_playerTurn].resources[offer.first] += offer.second;
 	}
 
 	return result;
 }
 
-BoardState BoardState::BankTrade(const std::vector<Resource> in, const Resource out, const int player) const
+BoardState BoardState::BankTrade(const std::map<Resource, int> toBank, const std::map<Resource, int> fromBank) const
 {
 	BoardState result = *this;
 
-	//Remove resources from Player 1's hand
-	for (auto& offer : in) {
-		for (int i = 0; i < result.m_players[player].resources.size(); i++) {
-			if (result.m_players[player].resources[i] == offer)
-				result.m_players[player].resources.erase(result.m_players[player].resources.begin() + i);
-		}
+	//Remove resources from player's hand
+	for (auto& offer : toBank) {
+		result.m_players[m_playerTurn].resources[offer.first] -= offer.second;
 	}
 
 	//Add resource traded for into player's hand
-	result.m_players[player].resources.push_back(out);
+	for (auto& offer : fromBank) {
+		result.m_players[m_playerTurn].resources[offer.first] += offer.second;
+	}
 
 	return result;
 }
 
-BoardState BoardState::BuildRoad(const std::shared_ptr<Edge> location, const int player) const
+BoardState BoardState::BuildRoad(const std::shared_ptr<Edge> location) const
 {
 	BoardState result = *this;
 
 	result.m_edgeList[location->index]->building = EdgeBuilding::Road;
-	result.m_edgeList[location->index]->owner = player;
+	result.m_edgeList[location->index]->owner = m_playerTurn;
+
+	if(result.m_roadBuildingPhase != 0 && result.m_setupPhase == SetupPhase::Done) {
+		result.m_players[m_playerTurn].resources[Resource::Brick]--;
+		result.m_players[m_playerTurn].resources[Resource::Lumber]--;
+	}
+
+	if (result.m_roadBuildingPhase > 0)
+		result.m_roadBuildingPhase++;
+	if (result.m_roadBuildingPhase > 2)
+		result.m_roadBuildingPhase = 0;
+
 	result.UpdateLongestRoad();
+
+	if (result.m_setupPhase != SetupPhase::Done && result.m_setupPhase == SetupPhase::Road1) {
+		if (result.m_playerTurn != result.m_numPlayers - 1) {
+			result.m_setupPhase = SetupPhase::Settlement1;
+			result.m_playerTurn++;
+		}
+		else {
+			result.m_setupPhase = SetupPhase::Settlement2;
+		}
+	}
+	else if (result.m_setupPhase != SetupPhase::Done && result.m_setupPhase == SetupPhase::Road2) {
+		if (result.m_playerTurn != 0) {
+			result.m_setupPhase = SetupPhase::Settlement2;
+			result.m_playerTurn--;
+		}
+		else {
+			result.m_setupPhase = SetupPhase::Done;
+		}
+	}
 
 	return result;
 }
 
-BoardState BoardState::BuildSettlement(const std::shared_ptr<Corner> location, const int player) const
+BoardState BoardState::BuildSettlement(const std::shared_ptr<Corner> location) const
 {
 	BoardState result = *this;
 
 	result.m_cornerList[location->index]->building = CornerBuilding::Settlement;
-	result.m_cornerList[location->index]->owner = player;
+	result.m_cornerList[location->index]->owner = m_playerTurn;
 
-	result.m_players[player].score++;
+	if (result.m_setupPhase == SetupPhase::Done) {
+		result.m_players[m_playerTurn].resources[Resource::Brick]--;
+		result.m_players[m_playerTurn].resources[Resource::Lumber]--;
+		result.m_players[m_playerTurn].resources[Resource::Wool]--;
+		result.m_players[m_playerTurn].resources[Resource::Ore]--;
+	}
+
+	result.m_players[m_playerTurn].score++;
+	result.CheckGameEnd();
+
+	if (result.m_setupPhase != SetupPhase::Done && result.m_setupPhase == SetupPhase::Settlement1) {
+		result.m_setupPhase = SetupPhase::Road1;
+	}
+	else if (result.m_setupPhase != SetupPhase::Done && result.m_setupPhase == SetupPhase::Settlement2) {
+		result.m_setupPhase = SetupPhase::Road2;
+	}
 
 	return result;
 }
 
-BoardState BoardState::BuildCity(const std::shared_ptr<Corner> location, const int player) const
+BoardState BoardState::BuildCity(const std::shared_ptr<Corner> location) const
 {
 	BoardState result = *this;
 
 	result.m_cornerList[location->index]->building = CornerBuilding::City;
 
-	result.m_players[player].score++;
+	result.m_players[m_playerTurn].resources[Resource::Ore] -= 3;
+	result.m_players[m_playerTurn].resources[Resource::Grain] -= 2;
+
+	result.m_players[m_playerTurn].score++;
+	result.CheckGameEnd();
 
 	return result;
 }
 
-BoardState BoardState::BuyDevelopment(const int player) const
+BoardState BoardState::BuyDevelopment() const
 {
 	BoardState result = *this;
 
 	int cardIndex = rand() % result.m_developmentDeck.size();
 	DevelopmentCard card = result.m_developmentDeck[cardIndex];
 
+	result.m_players[m_playerTurn].resources[Resource::Wool]--;
+	result.m_players[m_playerTurn].resources[Resource::Ore]--;
+	result.m_players[m_playerTurn].resources[Resource::Grain]--;
+
 	//Add development card to player hand
-	result.m_players[player].development.push_back(card);
-	if (card == DevelopmentCard::Knight) {
-		result.m_players[player].armySize++;
-	}
-	else if (card == DevelopmentCard::VictoryPoint) {
-		result.m_players[player].score++;
+	result.m_players[m_playerTurn].development[card]++;
+	if (card == DevelopmentCard::VictoryPoint) {
+		result.m_players[m_playerTurn].score++;
+		result.CheckGameEnd();
 	}
 
 	//Remove from deck
 	result.m_developmentDeck.erase(result.m_developmentDeck.begin() + cardIndex);
+
+	return result;
+}
+
+BoardState BoardState::DiscardCards(const std::map<Resource, int> amount) const
+{
+	BoardState result = *this;
+
+	for (auto& discard : amount) {
+		result.m_players[m_playerTurn].resources[discard.first] -= discard.second;
+	}
+
+	if (result.m_playerTurn != result.m_robberPlayer) {
+		result.m_playerTurn = (result.m_playerTurn + 1) % m_numPlayers;
+	}
+	else {
+		result.m_robberPhase = RobberPhase::Move;
+	}
 
 	return result;
 }
@@ -332,37 +396,186 @@ BoardState BoardState::MoveRobber(const HexCoord location) const
 	BoardState result = *this;
 
 	result.m_robberLocation = location;
+	result.m_robberPhase = RobberPhase::Steal;
 
 	return result;
 }
 
-BoardState BoardState::Monopoly(const Resource resource, const int player) const
+BoardState BoardState::StealCard(const int otherPlayer) const
+{
+	BoardState result = *this;
+
+	int handSize = 0;
+	for(auto& res : result.m_players[otherPlayer].resources) {
+		handSize += res.second;
+	}
+
+	int choice = rand() % handSize;
+	int count = 0;
+
+	for (auto& res : result.m_players[otherPlayer].resources) {
+		count += res.second;
+		if (choice < count) {
+			result.m_players[m_playerTurn].resources[res.first]++;
+			res.second--;
+			break;
+		}
+	}
+
+	result.m_robberPhase = RobberPhase::Inactive;
+
+	return result;
+}
+
+BoardState BoardState::Knight() const
+{
+	BoardState result = *this;
+
+	result.m_players[m_playerTurn].development[DevelopmentCard::Knight]--;
+	result.UpdateLargestArmy();
+	result.m_robberPhase = RobberPhase::Move;
+
+	return result;
+}
+
+BoardState BoardState::Monopoly(const Resource resource) const
 {
 	BoardState result = *this;
 
 	//Find all player's resources of a type, remove it from their hands, and add it the current player's hand
 	for (auto& plyr : result.m_players) {
-		if (plyr.index != player) {
-			for (int i = 0; i < plyr.resources.size(); i++) {
-				if (plyr.resources[i] == resource) {
-					plyr.resources.erase(plyr.resources.begin() + i);
-					result.m_players[player].resources.push_back(resource);
-					//Reset i to make sure that iteration still works properly after erase
-					i = 0;
-				}
-			}
+		if (plyr.index != m_playerTurn) {
+			result.m_players[m_playerTurn].resources[resource] += plyr.resources[resource];
+			plyr.resources[resource] = 0;
 		}
 	}
+
+	result.m_players[m_playerTurn].development[DevelopmentCard::Monopoly]--;
 
 	return result;
 }
 
-BoardState BoardState::YearOfPlenty(const Resource resource1, const Resource resource2, const int player) const
+BoardState BoardState::YearOfPlenty(const Resource resource1, const Resource resource2) const
 {
 	BoardState result = *this;
 
-	result.m_players[player].resources.push_back(resource1);
-	result.m_players[player].resources.push_back(resource2);
+	result.m_players[m_playerTurn].resources[resource1]++;
+	result.m_players[m_playerTurn].resources[resource2]++;
+
+	result.m_players[m_playerTurn].development[DevelopmentCard::YearOfPlenty]--;
 
 	return result;
+}
+
+BoardState BoardState::RoadBuilding() const
+{
+	BoardState result = *this;
+
+	result.m_roadBuildingPhase = 1;
+
+	return result;
+}
+
+BoardState BoardState::EndPhase() const
+{
+	BoardState result = *this;
+	result.m_turnPhase = (TurnPhase)((int)(result.m_turnPhase) + 1);
+	return result;
+}
+
+BoardState BoardState::EndTurn() const
+{
+	BoardState result = *this;
+	result.m_playerTurn = (result.m_playerTurn + 1) % result.m_numPlayers;
+	result.m_turnPhase = TurnPhase::Produce;
+	return result;
+}
+
+std::vector<std::function<void>> BoardState::GetAvailableActions()
+{
+	std::vector<std::function<void>> validMoves = std::vector<std::function<void>>();
+
+	switch (m_setupPhase) 
+	{
+		case SetupPhase::Done:
+			switch (m_robberPhase)
+			{
+				case RobberPhase::Inactive:
+					switch (m_turnPhase)
+					{
+						case TurnPhase::Produce:
+							validMoves.push_back(ProduceResources);
+							break;
+
+						case TurnPhase::EndProduce:
+							validMoves.push_back(EndPhase);
+							break;
+
+						case TurnPhase::Build:
+							if (m_roadBuildingPhase > 0) {
+								validMoves.push_back(BuildRoad);
+							}
+							else {
+								validMoves.push_back(PlayerTrade);
+								validMoves.push_back(BankTrade);
+								if (m_players[m_playerTurn].resources[Resource::Brick] > 0 && m_players[m_playerTurn].resources[Resource::Wool] > 0
+									&& m_players[m_playerTurn].resources[Resource::Lumber] > 0 && m_players[m_playerTurn].resources[Resource::Grain] > 0) {
+									validMoves.push_back(BuildSettlement);
+								}
+								if (m_players[m_playerTurn].resources[Resource::Ore] > 2 && m_players[m_playerTurn].resources[Resource::Grain] > 1) {
+									validMoves.push_back(BuildCity);
+								}
+								if (m_players[m_playerTurn].resources[Resource::Brick] > 0 && m_players[m_playerTurn].resources[Resource::Lumber] > 0) {
+									validMoves.push_back(BuildRoad);
+								}
+								if (m_players[m_playerTurn].resources[Resource::Ore] > 0 && m_players[m_playerTurn].resources[Resource::Wool] > 0
+									&& m_players[m_playerTurn].resources[Resource::Grain] > 0) {
+									validMoves.push_back(BuyDevelopment);
+								}
+								validMoves.push_back(EndTurn);
+							}
+							break;
+					}
+
+					if (m_players[m_playerTurn].development[DevelopmentCard::Knight] > 0) {
+						validMoves.push_back(Knight);
+					}
+					if (m_players[m_playerTurn].development[DevelopmentCard::Monopoly] > 0) {
+						validMoves.push_back(Monopoly);
+					}
+					if (m_players[m_playerTurn].development[DevelopmentCard::YearOfPlenty] > 0) {
+						validMoves.push_back(YearOfPlenty);
+					}
+					if (m_players[m_playerTurn].development[DevelopmentCard::RoadBuilding] > 0) {
+						validMoves.push_back(RoadBuilding);
+					}
+					break;
+
+				case RobberPhase::Move:
+					validMoves.push_back(MoveRobber);
+					break;
+
+				case RobberPhase::Discard:
+					validMoves.push_back(DiscardCards);
+					break;
+
+				case RobberPhase::Steal:
+					validMoves.push_back(StealCard);
+					break;
+			}
+			break;
+
+		case SetupPhase::Settlement1:
+		case SetupPhase::Settlement2:
+			validMoves.push_back(BuildSettlement);
+			break;
+
+		case SetupPhase::Road1:
+		case SetupPhase::Road2:
+			validMoves.push_back(BuildRoad);
+			break;
+
+	}
+
+	return validMoves;
 }

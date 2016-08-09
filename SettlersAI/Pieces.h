@@ -9,6 +9,9 @@ enum class Resource { None, Brick, Lumber, Ore, Grain, Wool };
 enum class Terrain { Desert, Hills, Forest, Mountains, Fields, Pasture };
 enum class Port { None, Brick, Lumber, Ore, Grain, Wool, Any };
 enum class DevelopmentCard { Knight, RoadBuilding, YearOfPlenty, Monopoly, VictoryPoint};
+enum class TurnPhase { Produce, EndProduce, Build, End };
+enum class RobberPhase { Inactive, Discard, Move, Steal };
+enum class SetupPhase { Settlement1, Road1, Settlement2, Road2, Done };
 
 struct HexCoord {
 	int p, q, r;

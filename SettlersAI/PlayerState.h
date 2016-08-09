@@ -4,20 +4,25 @@
 
 struct PlayerState
 {
-	PlayerState() : 
-		index(0), 
-		resources(std::vector<Resource>()),
-		development(std::vector<DevelopmentCard>()) {}
+	PlayerState() : index(0)
+	{
+		for (int i = 1; i < 6; i++) {
+			resources.insert(std::pair<Resource, int>((Resource)i, 0));
+		}
+		for (int i = 0; i < 5; i++) {
+			development.insert(std::pair<DevelopmentCard, int>((DevelopmentCard)i, 0));
+		}
+	}
 
-	PlayerState(int index_) : 
-		index(index_),
-		resources(std::vector<Resource>()),
-		development(std::vector<DevelopmentCard>()) {}
+	PlayerState(int index_) : index(index_)
+	{
+
+	}
 
 	~PlayerState() {}
 
-	std::vector<Resource> resources;
-	std::vector<DevelopmentCard> development;
+	std::map<Resource, int> resources;
+	std::map<DevelopmentCard, int> development;
 	int roadLength = 0;
 	int armySize = 0;
 	int score = 0;
@@ -27,4 +32,3 @@ struct PlayerState
 
 	const int index;
 };
-

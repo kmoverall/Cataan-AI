@@ -14,6 +14,7 @@
 #include <assert.h>
 #include <functional>
 #include <unordered_map>
+#include <map>
 #include <memory>
 
 // TODO: reference additional headers your program requires here
